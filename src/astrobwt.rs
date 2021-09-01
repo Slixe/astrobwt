@@ -9,7 +9,11 @@ pub const MAX_LENGTH: usize = 1024 * 1024 + STAGE1_LENGTH + 1024;
 pub fn compute(input: &[u8], max_limit: usize) -> Vec<u8> {
     let mut key = sha3(&input); // Step 1: calculate SHA3 of input data
     let mut stage1 = [0u8; STAGE1_LENGTH + 64];
-    crate::salsa20::xor_key_stream(&mut stage1[1..STAGE1_LENGTH + 1], &[0u8; STAGE1_LENGTH], &key); // Step 2: expand data using Salsa20
+    crate::salsa20::xor_key_stream(
+        &mut stage1[1..STAGE1_LENGTH + 1],
+        &[0u8; STAGE1_LENGTH],
+        &key,
+    ); // Step 2: expand data using Salsa20
     let mut stage1_result = [0u8; STAGE1_LENGTH + 1];
     sort_indices(STAGE1_LENGTH + 1, &mut stage1, &mut stage1_result); // Step 3: calculate BWT of step 2
     key = sha3(&stage1_result); // Step 4: calculate SHA3 of BWT data
@@ -20,7 +24,11 @@ pub fn compute(input: &[u8], max_limit: usize) -> Vec<u8> {
     }
 
     let mut stage2 = vec![0u8; stage2_length + 1 + 64];
-    crate::salsa20::xor_key_stream(&mut stage2[1..stage2_length + 1], &vec![0u8; stage2_length], &key); // Step 6: expand data using Salsa20 with size of step 5
+    crate::salsa20::xor_key_stream(
+        &mut stage2[1..stage2_length + 1],
+        &vec![0u8; stage2_length],
+        &key,
+    ); // Step 6: expand data using Salsa20 with size of step 5
     let mut stage2_result = [0u8; 1024 * 1024 + STAGE1_LENGTH + 1];
     sort_indices(stage2_length + 1, &stage2, &mut stage2_result); // Step 7: Calculate BWT of data from step 6
     let key = sha3(&stage2_result[..stage2_length + 1]); // Step 8: calculate SHA3 of BWT data from step 7
@@ -31,7 +39,7 @@ fn sha3(input: &[u8]) -> [u8; 32] {
     let mut output: [u8; 32] = [0; 32];
     let mut hasher = Sha3_256::new();
     hasher.update(input);
-    
+
     output.copy_from_slice(hasher.finalize().as_slice());
     output
 }
@@ -61,13 +69,16 @@ fn sort_indices(n: usize, input_extra: &[u8], output: &mut [u8]) {
     let mut i = 0;
     while i < loop3 {
         let k0 = BigEndian::read_u64(&input[i..]);
-        counters[0][((k0 >> (64 - COUNTING_SORT_BITS * 2)) & (COUNTING_SORT_SIZE - 1)) as usize] += 1;
+        counters[0][((k0 >> (64 - COUNTING_SORT_BITS * 2)) & (COUNTING_SORT_SIZE - 1)) as usize] +=
+            1;
         counters[1][(k0 >> (64 - COUNTING_SORT_BITS)) as usize] += 1;
         let k1 = k0 << 8;
-        counters[0][((k1 >> (64 - COUNTING_SORT_BITS * 2)) & (COUNTING_SORT_SIZE - 1)) as usize] += 1;
+        counters[0][((k1 >> (64 - COUNTING_SORT_BITS * 2)) & (COUNTING_SORT_SIZE - 1)) as usize] +=
+            1;
         counters[1][(k1 >> (64 - COUNTING_SORT_BITS)) as usize] += 1;
         let k2 = k0 << 16;
-        counters[0][((k2 >> (64 - COUNTING_SORT_BITS * 2)) & (COUNTING_SORT_SIZE - 1)) as usize] += 1;
+        counters[0][((k2 >> (64 - COUNTING_SORT_BITS * 2)) & (COUNTING_SORT_SIZE - 1)) as usize] +=
+            1;
         counters[1][(k2 >> (64 - COUNTING_SORT_BITS)) as usize] += 1;
 
         i += 3;
@@ -76,7 +87,8 @@ fn sort_indices(n: usize, input_extra: &[u8], output: &mut [u8]) {
     if n % 3 != 0 {
         for i in loop3..n {
             let k = BigEndian::read_u64(&input[i..]);
-            counters[0][((k >> (64 - COUNTING_SORT_BITS * 2)) & (COUNTING_SORT_SIZE - 1)) as usize] += 1;
+            counters[0]
+                [((k >> (64 - COUNTING_SORT_BITS * 2)) & (COUNTING_SORT_SIZE - 1)) as usize] += 1;
             counters[1][(k >> (64 - COUNTING_SORT_BITS)) as usize] += 1;
         }
     }
@@ -106,7 +118,8 @@ fn sort_indices(n: usize, input_extra: &[u8], output: &mut [u8]) {
     for i in 0..n {
         let data = tmp_indices[i];
         let tmp = counters[1][(data >> (64 - COUNTING_SORT_BITS)) as usize];
-        counters[1][(data >> (64 - COUNTING_SORT_BITS)) as usize] = u32::wrapping_sub(counters[1][(data >> (64 - COUNTING_SORT_BITS)) as usize], 1);
+        counters[1][(data >> (64 - COUNTING_SORT_BITS)) as usize] =
+            u32::wrapping_sub(counters[1][(data >> (64 - COUNTING_SORT_BITS)) as usize], 1);
         indices[tmp as usize] = data;
     }
 
