@@ -1,7 +1,8 @@
 # AstroBWT
 
 AstroBWT is a proof-of-work (PoW) algorithm based on Burrows-Wheeler transform (BWT).
-Developed and used by the DERO Project for Mobile (arm)/CPU/GPU Mining on their mainnet since March 2021.
+
+Developed and used by the DERO Project for Mobile (arm)/CPU/GPU Mining on their mainnet since March 2020.
 
 ## How it works
 - Step 1: calculate SHA3 of input data
