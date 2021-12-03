@@ -1,5 +1,4 @@
 use sha3::{Digest, Sha3_256};
-use std::time::Instant;
 use std::convert::TryInto;
 
 const STAGE1_LENGTH: usize = 147253;
@@ -164,6 +163,4 @@ fn sort_indices(n: usize, input_extra: &[u8], output: &mut [u8]) {
             }
         }
     }
-
-    //println!("sort indices: {}ms", start.elapsed().as_millis());
 }

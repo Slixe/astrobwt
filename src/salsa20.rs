@@ -63,8 +63,7 @@ fn core(
     let (mut x9, mut x10, mut x11, mut x12, mut x13, mut x14, mut x15) =
         (j9, j10, j11, j12, j13, j14, j15);
 
-    let mut i = 0;
-    while i < ROUNDS {
+    for _ in (0..ROUNDS).step_by(2) {
         let mut u: u32 = u32::wrapping_add(x0, x12);
         x4 ^= u << 7 | u >> (32 - 7);
         u = u32::wrapping_add(x4, x0);
@@ -136,8 +135,6 @@ fn core(
         x14 ^= u << 13 | u >> (32 - 13);
         u = u32::wrapping_add(x14, x13);
         x15 ^= u << 18 | u >> (32 - 18);
-
-        i += 2;
     }
 
     x0 = u32::wrapping_add(x0, j0);
