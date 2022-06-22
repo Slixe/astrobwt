@@ -13,6 +13,9 @@ pub fn xor_key_stream(mut output: &mut [u8], mut input: &[u8], key: &[u8; KEY_SI
 
     while input.len() >= BLOCK_SIZE {
         core(&mut block, &mut counter, &key, &SIGMA);
+
+        let _ = output[0..BLOCK_SIZE];
+        let _ = input[0..BLOCK_SIZE];
         for (i, x) in block.iter().enumerate() {
             output[i] = input[i] ^ x;
         }
@@ -27,8 +30,11 @@ pub fn xor_key_stream(mut output: &mut [u8], mut input: &[u8], key: &[u8; KEY_SI
         output = &mut output[64..];
     }
 
-    if input.len() > 0 {
+    let input_len = input.len();
+    if input_len > 0 {
         core(&mut block, &mut counter, &key, &SIGMA);
+
+        let _ = output[0..input_len];
         for (i, v) in input.iter().enumerate() {
             output[i] = v ^ block[i];
         }

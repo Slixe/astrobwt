@@ -9,3 +9,4 @@ edition = "2018"
 [dependencies]
 sha3 = "0.9.1"
 rand = "0.8.4"
+xxhash-rust = { version = "0.8.5", features = ["xxh64"] }

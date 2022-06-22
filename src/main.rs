@@ -1,5 +1,7 @@
 mod astrobwt;
 mod salsa20;
+mod fn1va;
+mod rc4;
 
 use std::time::Instant;
 use std::thread;
@@ -14,7 +16,7 @@ fn main() {
             let handle = thread::spawn(move || {
                 for _ in 0..iterations {
                     let random_bytes: Vec<u8> = (0..255).map(|_| { rand::random::<u8>() }).collect();
-                    astrobwt::compute(&random_bytes, astrobwt::MAX_LENGTH);
+                    astrobwt::compute(&random_bytes);
                 }
             });
             handles.push(handle);

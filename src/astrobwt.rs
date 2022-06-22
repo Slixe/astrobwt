@@ -1,38 +1,75 @@
 use sha3::{Digest, Sha3_256};
 use std::convert::TryInto;
 
-const STAGE1_LENGTH: usize = 147253;
+use crate::{fn1va, salsa20, rc4};
+
 const COUNTING_SORT_BITS: u64 = 10;
 const COUNTING_SORT_SIZE: u64 = 1 << COUNTING_SORT_BITS;
-pub const MAX_LENGTH: usize = 1024 * 1024 + STAGE1_LENGTH + 1024;
 
-pub fn compute(input: &[u8], max_limit: usize) -> Vec<u8> {
-    let mut key = sha3(&input); // Step 1: calculate SHA3 of input data
-    let mut stage1 = [0u8; STAGE1_LENGTH + 64];
-    crate::salsa20::xor_key_stream(
-        &mut stage1[1..STAGE1_LENGTH + 1],
-        &[0u8; STAGE1_LENGTH],
-        &key,
-    ); // Step 2: expand data using Salsa20
-    let mut stage1_result = [0u8; STAGE1_LENGTH + 1];
-    sort_indices(STAGE1_LENGTH + 1, &mut stage1, &mut stage1_result); // Step 3: calculate BWT of step 2
-    key = sha3(&stage1_result); // Step 4: calculate SHA3 of BWT data
+const EMPTY_STEP_3: [u8; 256] = [0u8; 256];
 
-    let stage2_length = STAGE1_LENGTH + (u32::from_le_bytes(key[0..4].try_into().unwrap()) & 0xfffff) as usize; // Step 5: calculate size of stage2 with random number based on step 4
-    if stage2_length > max_limit {
-        panic!("Max limit reached");
+pub fn compute(input: &[u8]) -> Vec<u8> {
+    let key = sha3(&input); // Step 1: calculate SHA3 of input data
+    let mut step_3 = [0u8; 256];
+    salsa20::xor_key_stream(&mut step_3, &EMPTY_STEP_3, &key); // Step 2: expand data using Salsa20
+    let mut rc4s = rc4::Cipher::new(&step_3);// Step 3: RC4
+    // TODO
+    // rc4s.xor_key_stream(&mut step_3, &step_3);
+    let mut lhash = fn1va::hash_bytes_64(&step_3);
+    let mut prev_lhash = lhash;
+    let mut tries: u64 = 0;
+    loop {
+        tries += 1;
+        let random_switcher = prev_lhash ^ lhash ^ tries;
+        let op = random_switcher as u8;
+		let mut pos1 = (random_switcher >> 8) as usize;
+		let mut pos2 = (random_switcher >> 16) as usize;
+
+        if pos1 > pos2 {
+            (pos1, pos2) = (pos2, pos1);
+		}
+
+        if pos2-pos1 > 32 { // give wave or wavefronts an optimization
+			pos2 = pos1 + (pos2 - pos1) & 0x1f // max update 32 bytes
+		}
+
+        let _ = step_3[pos1..pos2]; // bounds check elimination
+
+        match op { // TODO
+            _ => {
+
+            }
+        };
+
+        let value = step_3[pos1] - step_3[pos2];
+        if value < 0x10 { // 6.25 % probability
+            lhash = xxhash_rust::xxh64::xxh64(&step_3[..pos2], 0); // more deviations
+        }
+
+        if value < 0x20 { // 12.5 % probability
+			prev_lhash = lhash + prev_lhash;
+			lhash = fn1va::hash_bytes_64(&step_3[..pos2]); // more deviations
+		}
+
+		if value < 0x30 { // 18.75 % probability
+			prev_lhash = lhash + prev_lhash;
+			// TODO lhash = siphash::hash(tries, prev_lhash, step_3[0..pos2]); // more deviations
+		}
+
+		if value <= 0x40 { // 25% probablility
+			// TODO rc4s.xor_key_stream(&mut step_3, &step_3); // do the rc4
+		}
+
+		step_3[255] = step_3[255] ^ step_3[pos1] ^ step_3[pos2];
+
+		if tries > 260+16 || (step_3[255] >= 0xf0 && tries > 260) { // keep looping until condition is satisfied
+			break
+		}
     }
 
-    let mut stage2 = vec![0u8; stage2_length + 1 + 64];
-    crate::salsa20::xor_key_stream(
-        &mut stage2[1..stage2_length + 1],
-        &vec![0u8; stage2_length],
-        &key,
-    ); // Step 6: expand data using Salsa20 with size of step 5
-    let mut stage2_result = [0u8; 1024 * 1024 + STAGE1_LENGTH + 1];
-    sort_indices(stage2_length + 1, &stage2, &mut stage2_result); // Step 7: Calculate BWT of data from step 6
-    let key = sha3(&stage2_result[..stage2_length + 1]); // Step 8: calculate SHA3 of BWT data from step 7
-    key.into()
+    let data_len: u32 = ((tries-4) * 256 + ((step_3[253] as u64) << 8 | (step_3[254] as u64)) & 0x3ff) as u32; // ensure wide  number of variants exists
+    //sort_indices(data_len as usize, input_extra, output);
+    panic!("WIP")
 }
 
 fn sha3(input: &[u8]) -> [u8; 32] {
